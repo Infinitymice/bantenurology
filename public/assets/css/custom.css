@@ -1,0 +1,128 @@
+.card.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+.sidebar-main {
+    transition: all 0.3s ease-in-out;
+}
+
+/* COBA CSS */
+
+/* Pastikan container utama fleksibel */
+.page-container {
+    display: flex;
+    width: 100%;
+}
+
+/* Pastikan page-content mengambil sisa ruang */
+.page-content {
+    flex-grow: 1; /* Memberikan sisa ruang ke konten */
+}
+
+.table thead {
+    background-color: #bdbebd; 
+    color: black; 
+}
+/* css untuk event card */
+.event-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.event-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.event-card.selected {
+    border-color: #0d6efd;
+    background-color: #f8f9fa;
+}
+
+/* Jika event disabled */
+.event-card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f5f5f5;
+    pointer-events: none;
+}
+
+.event-card.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Background overlay */
+.loading-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* Background semi-transparan */
+    z-index: 1050;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Popup Content */
+.loading-popup-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.loading-popup-content p {
+    font-size: 16px;
+    color: #000;
+    font-weight: bold;
+}
+
+/* CSS untuk form accommodation */
+.room-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.room-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.room-card.selected {
+    border-color: #0d6efd;
+    background-color: #f8f9fa;
+}
+
+/* Tambahkan style untuk card yang disabled */
+.room-card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f5f5f5;
+    pointer-events: none;
+}
+
+.room-card.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.room-quantity select {
+    cursor: pointer;
+}
+
+/* css untuk particles js */
+#particles-js {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: linear-gradient(135deg, #4e54c8, #8f94fb); /* Warna latar belakang */
+}

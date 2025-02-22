@@ -1,0 +1,176 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+.page-container {
+    height: 100%;
+    display: flex;
+}
+
+/* Navbar full width */
+@media (max-width: 1200px) {
+    .navbar {
+        width: 100%;
+    }
+}
+
+
+
+.sidebar-main {
+    height: 100%;
+    position: relative;
+    z-index: 1000;
+}
+/* CSS untuk tombol export */
+.dt-button-collection {
+    background-color: #007bff; /* Warna utama tombol */
+    color: white;
+    border-radius: 5px;
+}
+
+.dt-button-collection:hover {
+    background-color: #0056b3; /* Warna tombol saat hover */
+}
+
+.dt-button-collection span {
+    padding-right: 10px;
+}
+
+/* Tombol di dalam dropdown */
+.dt-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    margin-top: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.dt-button:hover {
+    background-color: #0056b3;
+}
+
+
+
+
+/* Css untuk status pembayaran */
+.bg-pending {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.bg-paid {
+    background-color: #ffc107;
+    color: black;
+}
+
+.bg-completed {
+    background-color: #28a745;
+    color: white;
+}
+
+.bg-failed {
+    background-color: #dc3545;
+    color: white;
+}
+.bg-canceled {
+    background-color: #6c757d;
+    color: white;
+}
+.bg-unpaid {
+    background-color: #000000;
+    color: white;
+}
+
+.status-background {
+    padding: 5px 10px;
+    border-radius: 5px;
+    color: white;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.scanner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;      
+    height: auto;           
+    margin-bottom: 20px;     
+}
+
+
+.swal-black-popup {
+    background-color: #333 !important; 
+    color: #fff !important; 
+}
+
+.swal-black-title {
+    color: #fff !important;
+}
+
+.swal-black-content {
+    color: #fff !important;
+}
+
+/* .swal2-popup {
+    border: 2px solid #fff !important;
+} */
+
+.swal2-icon {
+    border-color: #fff !important;
+}
+
+
+
+
+.loading-spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1050; /* Pastikan berada di atas modal */
+    background-color: rgba(255, 255, 255, 0.9); /* Background semi-transparan */
+    padding: 20px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.loading-spinner p {
+    color: #000; 
+    margin-top: 10px;
+}
+
+.btn-search {
+    background-color: #560E33;
+    color: #fff;
+}
+
+
+
+
+
+
+
+
+
+#participants-table th:nth-child(9),
+#participants-table td:nth-child(9) {
+    width: 300px !important;
+    max-width: 300px !important;
+    min-width: 300px !important;
+    word-wrap: break-word;
+    white-space: normal; 
+}
+#payments-table th:nth-child(7),
+#payments-table td:nth-child(7) {
+    width: 300px !important;
+    max-width: 300px !important;
+    min-width: 200px !important;
+    word-wrap: break-word; 
+    white-space: normal;
+}
