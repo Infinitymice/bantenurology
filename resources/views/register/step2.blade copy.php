@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Step 2 - Choose Product')
+@section('title', 'Step 2 - Choose Events')
 
 @section('content')
 <div class="container mt-5">
@@ -45,6 +45,7 @@
 
                         <!-- Input tersembunyi untuk kategori yang dipilih -->
                         <input type="hidden" id="selected_categories" name="selected_categories[]">
+                        
 
                         <div class="mb-3" id="category-details" style="display: none;">
                             <div class="card">
@@ -114,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterEvents() {
     const eventType = document.getElementById('event_type').value;
     const eventOptionsContainer = document.getElementById('event-options');
-    eventOptionsContainer.innerHTML = ''; // Kosongkan kartu lama
+    eventOptionsContainer.innerHTML = '';
 
     if (eventType) {
         fetch(`/events-by-type/${eventType}?category=${selectedCategory}`)
@@ -208,52 +209,38 @@ function updateEventCards(eventType) {
 }
 
     // Fungsi untuk toggle kategori
-    window.toggleCategory = function(card) {
-        const eventTypeDropdown = document.getElementById('event_type');
-        if (!eventTypeDropdown) return; // Guard clause
+    window.toggleCategory = function (card) {
+    const eventTypeDropdown = document.getElementById('event_type');
+    if (!eventTypeDropdown) return; // Guard clause
 
-        const selectedEventTypeName = eventTypeDropdown.options[eventTypeDropdown.selectedIndex]?.text || '';
-        const eventType = eventTypeDropdown.value;
-        
-        const categoryId = parseInt(card.getAttribute('data-id'), 10);
-        const categoryName = card.getAttribute('data-name');
-        const categoryPrice = parseFloat(card.getAttribute('data-price'));
-        const originalPrice = parseFloat(card.getAttribute('data-original-price'));
-        const discountPercentage = parseFloat(card.getAttribute('data-discount'));
-        const categoryKuota = card.getAttribute('data-kuota');
-        const eventDate = card.getAttribute('data-date');
+    const selectedEventTypeName = eventTypeDropdown.options[eventTypeDropdown.selectedIndex]?.text || '';
+    const eventType = eventTypeDropdown.value;
+    
+    const categoryId = parseInt(card.getAttribute('data-id'), 10);
+    const categoryName = card.getAttribute('data-name');
+    const categoryPrice = parseFloat(card.getAttribute('data-price'));
+    const originalPrice = parseFloat(card.getAttribute('data-original-price'));
+    const discountPercentage = parseFloat(card.getAttribute('data-discount'));
+    const categoryKuota = card.getAttribute('data-kuota');
+    const eventDate = card.getAttribute('data-date');
 
-        const index = selectedCategories.findIndex(cat => cat.id === categoryId);
+    const index = selectedCategories.findIndex(cat => cat.id === categoryId);
 
-        if (eventType === '1' && selectedCategories.some(cat => cat.date === eventDate)) {
-            alert('You can only choose events on different dates.');
-            return;
-        }
+    // Cek apakah jenis event adalah Workshop dan pastikan tanggalnya berbeda dari event lain yang sudah dipilih
+    if (eventType === '1' && selectedCategories.some(cat => cat.date === eventDate)) {
+        alert('You can only choose events on different dates.');
+        return;
+    }
 
-        if (index === -1) {
-            if (eventType === '1') {
-                if (selectedCategories.length === 0) {
-                    selectedDate = eventDate;
-                }
+    if (index === -1) {
+        // Jika jenis event adalah 1 (workshop), terapkan filter
+        if (eventType === '1') {
+            if (selectedCategories.length === 0) {
+                selectedDate = eventDate;
+            }
 
-                if (selectedCategories.every(cat => cat.date !== eventDate)) {
-                    selectedCategories.push({
-                        id: categoryId,
-                        name: categoryName,
-                        price: categoryPrice,
-                        originalPrice: originalPrice,
-                        discountPercentage: discountPercentage,
-                        kuota: categoryKuota,
-                        date: eventDate,
-                        eventTypeName: selectedEventTypeName,
-                        eventTypeId: eventType
-                    });
-                    card.classList.add('selected');
-                } else {
-                    alert('You can only choose events on different dates.');
-                    return;
-                }
-            } else {
+            // Jika tanggalnya berbeda, tambahkan kategori ke array
+            if (selectedCategories.every(cat => cat.date !== eventDate)) {
                 selectedCategories.push({
                     id: categoryId,
                     name: categoryName,
@@ -266,16 +253,35 @@ function updateEventCards(eventType) {
                     eventTypeId: eventType
                 });
                 card.classList.add('selected');
+            } else {
+                alert('You can only choose events on different dates.');
+                return;
             }
         } else {
-            selectedCategories.splice(index, 1);
-            card.classList.remove('selected');
+            selectedCategories.push({
+                id: categoryId,
+                name: categoryName,
+                price: categoryPrice,
+                originalPrice: originalPrice,
+                discountPercentage: discountPercentage,
+                kuota: categoryKuota,
+                date: eventDate,
+                eventTypeName: selectedEventTypeName,
+                eventTypeId: eventType
+            });
+            card.classList.add('selected');
         }
+    } else {
+        selectedCategories.splice(index, 1);
+        card.classList.remove('selected');
+        if (selectedCategories.length === 0) {
+            selectedDate = null;
+        }
+    }
 
-        updateCategoryDetails();
-        updateSelectedCategoriesInput();
-        updateEventCards(eventType);
-    };
+    updateCategoryDetails();
+    updateEventCards(eventType);
+};
 
 
 
@@ -310,45 +316,22 @@ function updateEventCards(eventType) {
     // }
 
     // Fungsi untuk memperbarui event type dan kategori
-    function addToSelectedCategories(category) {
-        const existingIndex = selectedCategories.findIndex(cat => cat.id === category.id);
-        if (existingIndex !== -1) {
-            return;
-        }
+    function addCategoryToSelected(category) {
+        const eventTypeDropdown = document.getElementById('event_type');
+        const selectedEventTypeName = eventTypeDropdown.options[eventTypeDropdown.selectedIndex]?.text || '';
+        const selectedEventTypeId = eventTypeDropdown.value;  // Ambil ID event type
 
-        const selectedEventTypeId = document.getElementById('event_type').value;
-        const selectedEventType = document.querySelector('#event_type option:checked');
-        const selectedEventTypeName = selectedEventType ? selectedEventType.textContent : '';
+        console.log("Adding category:", category);
+        console.log("Selected Event Type Name:", selectedEventTypeName);
 
-        const originalPrice = parseFloat(category.onsite_price);
-        let finalPrice = originalPrice;
-        let discountPercentage = 0;
-
-        // Cek apakah ada voucher dan event type sesuai
-        const voucherCode = '{{ session('voucher_code') }}';
-        const voucherDiscount = '{{ session('voucher_discount') }}';
-        const validEventTypes = {!! json_encode(session('voucher_event_types', [])) !!};
-        
-        if (voucherCode && validEventTypes.includes(parseInt(selectedEventTypeId))) {
-            discountPercentage = parseFloat(voucherDiscount);
-            finalPrice = originalPrice - (originalPrice * discountPercentage / 100);
-        }
-
+        // Pastikan kategori yang dipilih memiliki eventTypeName yang benar
         selectedCategories.push({
-            id: category.id,
             name: category.name,
-            price: finalPrice,
-            originalPrice: originalPrice,
-            discountPercentage: discountPercentage,
-            eventTypeName: selectedEventTypeName,
-            eventTypeId: selectedEventTypeId,
-            discountCode: voucherCode || null
+            price: category.price,
+            eventTypeName: selectedEventTypeName,  // Menyertakan eventTypeName yang benar
+            eventTypeId: selectedEventTypeId // Menyertakan eventTypeId jika perlu
         });
-
-        updateCategoryDetails();
-        updateSelectedCategoriesInput();
     }
-
 
     // Update detail kategori yang terpilih
     function updateCategoryDetails() {
@@ -385,29 +368,16 @@ function updateEventCards(eventType) {
 
 
     // Memperbarui input tersembunyi untuk kategori yang dipilih
-    // function updateSelectedCategoriesInput() {
-    //     const selectedCategoriesInput = document.getElementById('selected_categories');
-    //     selectedCategoriesInput.value = selectedCategories.map(cat => cat.id).join(',');
-    // }
-
     function updateSelectedCategoriesInput() {
         const selectedCategoriesInput = document.getElementById('selected_categories');
         if (selectedCategories.length > 0) {
-            const categoriesData = selectedCategories.map(cat => ({
-                id: cat.id,
-                name: cat.name,
-                price: cat.price,
-                originalPrice: cat.originalPrice,
-                discountPercentage: cat.discountPercentage,
-                eventTypeName: cat.eventTypeName,
-                eventTypeId: cat.eventTypeId,
-                date: cat.date
-            }));
-            selectedCategoriesInput.value = JSON.stringify(categoriesData);
+            selectedCategoriesInput.value = selectedCategories.map(cat => cat.id).join(',');
         } else {
             selectedCategoriesInput.value = '';
         }
     }
+
+    
 
     function removeEvent() {
         // console.log('Remove button clicked');

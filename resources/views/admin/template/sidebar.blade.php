@@ -92,11 +92,12 @@
 							</ul>
 						</li>
 						<li class="nav-item nav-item-submenu">
-							<a href="#" class="nav-link"><i class="fa fa-hotel"></i> <span>Kelola Group</span></a>
-							<ul class="nav nav-group-sub" data-submenu-title="Akomodasi">
-								<li class="nav-item"><a href="{{ route('admin.group-codes.index') }}" class="nav-link">Data Group</a></li>
+							<a href="#" class="nav-link"><i class="icon-ticket"></i> <span>Kelola Voucher</span></a>
+							<ul class="nav nav-group-sub" data-submenu-title="Voucher">
+								<li class="nav-item"><a href="{{ route('admin.vouchers.index') }}" class="nav-link">Data Voucher</a></li>
 							</ul>
 						</li>
+						
 
 						<!-- /main -->
  
@@ -125,6 +126,7 @@
 								<li class="nav-item"><a href="{{ route('admin.wheel.index') }}" class="nav-link">Wheels</a></li>
 							</ul>
 						</li>
+						
 						<!-- /forms -->
 					</ul>
 				</div>

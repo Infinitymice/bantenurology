@@ -63,7 +63,9 @@
                                     <tr>
                                         <th>No</th>
                                         <th>Event</th>
-                                        <th class="text-end">Price</th>
+                                        <th class="text-end">Original Price</th>
+                                        <th class="text-center">Discount</th>
+                                        <th class="text-end">Final Price</th>
                                         <th class="text-center">Qty</th>
                                         <th class="text-end">Subtotal</th>
                                     </tr>
@@ -72,24 +74,35 @@
                                 @php $eventsTotal = 0; @endphp
                                 @foreach($selectedEvents as $index => $event)
                                     @php
-                                        $isEarlyBid = now() <= \Carbon\Carbon::parse($event->early_bid_date);
-                                        $price = $isEarlyBid ? $event->early_bid_price : $event->onsite_price;
-                                        $qty = 1;
-                                        $subtotal = $price * $qty;
-                                        $eventsTotal += $subtotal;
+                                        $pivot = $event->pivot;
+                                        $eventsTotal += $pivot->final_price;
                                     @endphp
                                     <tr>
                                         <td>{{ $index + 1 }}</td>
                                         <td>{{ $event->eventType->name ?? 'N/A' }} - {{ $event->name }}</td>
-                                        <td class="text-end">Rp {{ number_format($price, 0, ',', '.') }}</td>
-                                        <td class="text-center">{{ $qty }}</td>
-                                        <td class="text-end">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
+                                        <td class="text-end">
+                                            @if($pivot->discount_percentage > 0)
+                                                <del>Rp {{ number_format($pivot->original_price, 0, ',', '.') }}</del>
+                                            @else
+                                                Rp {{ number_format($pivot->original_price, 0, ',', '.') }}
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            @if($pivot->discount_percentage > 0)
+                                                {{ number_format($pivot->discount_percentage, 2) }}%
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td class="text-end">Rp {{ number_format($pivot->final_price, 0, ',', '.') }}</td>
+                                        <td class="text-center">1</td>
+                                        <td class="text-end">Rp {{ number_format($pivot->final_price, 0, ',', '.') }}</td>
                                     </tr>
                                 @endforeach
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <td colspan="4" class="text-end"><strong>Events Total</strong></td>
+                                        <td colspan="6" class="text-end"><strong>Events Total</strong></td>
                                         <td class="text-end"><strong>Rp {{ number_format($eventsTotal, 0, ',', '.') }}</strong></td>
                                     </tr>
                                 </tfoot>
@@ -170,7 +183,7 @@
                                     </tr>
                                     <tr class="border-top">
                                         <td class="text-end"><h5 class="mb-0">Grand Total:</h5></td>
-                                        <td class="text-end"><h5 class="mb-0 text-primary">Rp {{ number_format($eventsTotal + $accommodationTotal, 0, ',', '.') }}</h5></td>
+                                        <td class="text-end"><h5 class="mb-0 text-primary">Rp. {{ number_format($amount) }}</h5></td>
                                     </tr>
                                 </table>
                             </div>

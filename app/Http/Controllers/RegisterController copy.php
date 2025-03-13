@@ -8,11 +8,10 @@ use App\Models\Registrasi;
 use App\Models\Payment;
 use App\Models\Accommodation;
 use App\Models\RoomAvailability;
-use App\Models\Voucher;
-use App\Models\RegistrasiEvent;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Voucher;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
@@ -72,61 +71,128 @@ class RegisterController extends Controller
         return view('register.step1', compact('formData'));
     }
 
+    // // Step 1: Menyimpan Data Formulir
+    // public function storeStep1(Request $request)
+    // {
+    //     // Validasi data formulir
+    //     $validated = $request->validate([
+    //         'full_name' => 'required|string|max:255',
+    //         'nik' => 'required|string|max:25',
+    //         'institusi' => 'required|string|max:255',
+    //         'email' => 'required|email',
+    //         'category' => 'required|string|in:Student,General Practitioner/Resident,Specialist',
+    //         'specialistDetail' => 'nullable|string',
+    //         'phone' => 'required|string',
+    //         'address' => 'required|string',
+    //         'group_code' =>'nullable|string',
+    //     ]);
+
+    //     // Validate group code if group registration is selected
+    //     if ($request->has('is_group') && $request->is_group) {
+    //         try {
+    //             $groupCode = GroupCode::where('code', $request->group_code)
+    //                 ->where('is_active', true)
+    //                 ->first();
+
+    //             if (!$groupCode) {
+    //                 throw ValidationException::withMessages([
+    //                     'group_code' => ['Kode grup tidak valid atau sudah tidak aktif']
+    //                 ]);
+    //             }
+
+    //             if ($groupCode->current_members >= $groupCode->max_members) {
+    //                 throw ValidationException::withMessages([
+    //                     'group_code' => ['Grup sudah penuh']
+    //                 ]);
+    //             }
+
+    //             // Increment current_members
+    //             $groupCode->current_members += 1;
+    //             $groupCode->save();
+    //         } catch (ValidationException $e) {
+    //             return redirect()->back()
+    //                 ->withInput()
+    //                 ->withErrors(['group_code' => $e->getMessage()]);
+    //         }
+    //     }
+
+    //     // Rest of your validation
+    //     $validated = $request->validate([
+    //         'full_name' => 'required|string|max:255',
+    //         'nik' => 'required|string|max:25',
+    //         'institusi' => 'required|string|max:255',
+    //         'email' => 'required|email',
+    //         'category' => 'required|string|in:Student,General Practitioner/Resident,Specialist',
+    //         'specialistDetail' => 'nullable|string',
+    //         'phone' => 'required|string',
+    //         'address' => 'required|string',
+    //     ]);
+
+    //     // Add group code to session data if present
+    //     if ($request->has('is_group') && $request->is_group) {
+    //         $validated['group_code'] = $request->group_code;
+    //     }
+
+    //     $request->session()->put('form_data', $validated);
+    //     return redirect()->route('register.step2');
+
+    //     // Menyimpan data ke session
+    //     $request->session()->put('form_data', $validated);
+        
+
+    //     // Redirect ke Step 2: Pilih Produk
+    //     return redirect()->route('register.step2');
+    // }
+
     public function checkVoucherCode(Request $request)
     {
         try {
             $voucher = Voucher::where('code', $request->code)
                 ->where('is_active', true)
+                ->where(function($query) {
+                    $query->where('valid_until', '>', now())
+                        ->orWhereNull('valid_until');
+                })
                 ->first();
 
             if (!$voucher) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Invalid voucher code'
+                    'message' => 'Invalid voucher code or expired'
                 ]);
             }
 
             if ($voucher->max_uses && $voucher->times_used >= $voucher->max_uses) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Voucher has reached maximum usage'
+                    'message' => 'Voucher has reached maximum usage limit'
                 ]);
             }
 
-            if ($voucher->valid_until && now()->gt($voucher->valid_until)) {
-                return response()->json([
-                    'valid' => false,
-                    'message' => 'Voucher has expired'
-                ]);
-            }
-
-            // Simpan informasi voucher ke session
+            // Store voucher information in session
             session([
+                'voucher_discount' => $voucher->discount_percentage,
                 'voucher_code' => $voucher->code,
-                'voucher_discounts' => json_decode($voucher->event_discounts, true),
-                'voucher_types' => json_decode($voucher->discount_types, true)
+                'voucher_event_types' => json_decode($voucher->event_types) // Store event types array
             ]);
 
-            // Siapkan pesan diskon untuk setiap event
-            $eventTypes = \App\Models\EventType::pluck('name', 'id');
-            $discountMessages = [];
-            $discounts = json_decode($voucher->event_discounts, true);
-            $types = json_decode($voucher->discount_types, true);
-
-            foreach ($discounts as $typeId => $value) {
-                if (isset($eventTypes[$typeId])) {
-                    $type = $types[$typeId] ?? 'percentage';
-                    if ($type === 'percentage') {
-                        $discountMessages[] = $eventTypes[$typeId] . ': ' . number_format($value, 2) . '%';
-                    } else {
-                        $discountMessages[] = $eventTypes[$typeId] . ': Rp ' . number_format($value, 0, ',', '.');
-                    }
-                }
+            // Get event type names for message
+            $eventTypeNames = [];
+            if (!empty($voucher->event_types)) {
+                $eventTypes = json_decode($voucher->event_types);
+                $eventTypeNames = \App\Models\EventType::whereIn('id', $eventTypes)
+                    ->pluck('name')
+                    ->toArray();
             }
+
+            $message = empty($eventTypeNames) ? 
+                'Valid voucher code for all events' : 
+                'Valid voucher code for ' . implode(' and ', $eventTypeNames);
 
             return response()->json([
                 'valid' => true,
-                'message' => 'Valid voucher: ' . implode(', ', $discountMessages)
+                'message' => $message,
+                'discount_percentage' => $voucher->discount_percentage
             ]);
 
         } catch (\Exception $e) {
@@ -139,6 +205,7 @@ class RegisterController extends Controller
 
     public function storeStep1(Request $request)
     {
+        // First validate the basic form data
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'nik' => 'required|string|max:25',
@@ -150,7 +217,8 @@ class RegisterController extends Controller
             'address' => 'required|string',
             'voucher_code' => 'nullable|string',
         ]);
-
+    
+        // If voucher checkbox is checked and code is provided, validate it
         if ($request->has('voucher') && $request->voucher_code) {
             $voucher = Voucher::where('code', $request->voucher_code)
                 ->where('is_active', true)
@@ -159,77 +227,28 @@ class RegisterController extends Controller
                         ->orWhereNull('valid_until');
                 })
                 ->first();
-
+    
             if (!$voucher) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['voucher_code' => 'Invalid or expired voucher code']);
             }
-
-            session([
-                'voucher_discount' => $voucher->discount_percentage,
-                'voucher_code' => $voucher->code,
-                'voucher_event_types' => json_decode($voucher->event_types)
-            ]);
-        } else {
-            // Hapus session voucher jika checkbox tidak dicentang
-            session()->forget(['voucher_code', 'voucher_discounts', 'voucher_types']);
+    
+            if ($voucher->max_uses && $voucher->times_used >= $voucher->max_uses) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['voucher_code' => 'Voucher has reached maximum usage limit']);
+            }
+    
+            $validated['voucher_code'] = $request->voucher_code;
+            $validated['discount_percentage'] = $voucher->discount_percentage;
         }
-
+    
         $request->session()->put('form_data', $validated);
         return redirect()->route('register.step2');
     }
 
-    // public function storeStep1(Request $request)
-    // {
-    //     // First validate the basic form data
-    //     $validated = $request->validate([
-    //         'full_name' => 'required|string|max:255',
-    //         'nik' => 'required|string|max:25',
-    //         'institusi' => 'required|string|max:255',
-    //         'email' => 'required|email',
-    //         'category' => 'required|string|in:Student,General Practitioner/Resident,Specialist',
-    //         'specialistDetail' => 'nullable|string',
-    //         'phone' => 'required|string',
-    //         'address' => 'required|string',
-    //     ]);
-
-    //     // Only validate group code if group registration is selected
-    //     if ($request->has('is_group') && $request->is_group) {
-    //         $request->validate([
-    //             'group_code' => 'required|string'
-    //         ]);
-
-    //         $groupCode = GroupCode::where('code', $request->group_code)
-    //             ->where('is_active', true)
-    //             ->first();
-
-    //         if (!$groupCode) {
-    //             return redirect()->back()
-    //                 ->withInput()
-    //                 ->withErrors(['group_code' => 'Kode grup tidak valid atau sudah tidak aktif']);
-    //         }
-
-    //         if ($groupCode->current_members >= $groupCode->max_members) {
-    //             return redirect()->back()
-    //                 ->withInput()
-    //                 ->withErrors(['group_code' => 'Grup sudah penuh']);
-    //         }
-
-    //         // // If validation passes, increment the group members
-    //         // $groupCode->current_members += 1;
-    //         // $groupCode->save();
-
-    //         // Add group code to validated data
-    //         $validated['group_code'] = $request->group_code;
-    //     }
-
-    //     // Save to session and proceed
-    //     $request->session()->put('form_data', $validated);
-    //     return redirect()->route('register.step2');
-    // }
-
-    // Step 2: Menampilkan Pilihan Produk
+     // Step 2: Menampilkan Pilihan Produk
     public function showStep2(Request $request)
     {
         // Ambil data dari session dengan prioritas
@@ -283,53 +302,25 @@ class RegisterController extends Controller
 
 
     // Step 2: Menyimpan Pilihan Event
-    // public function storeStep2(Request $request)
-    // {
-    //     // Validasi input
-    //     $request->validate([
-    //         'selected_categories' => 'required',
-    //     ]);
-
-    //     // Pisahkan kategori yang dipilih menjadi array
-    //     $selectedCategories = explode(',', $request->input('selected_categories')[0]); 
-    //     $selectedCategories = array_map('intval', $selectedCategories);
-
-    //     // Simpan ke session dengan multiple key untuk konsistensi
-    //     session([
-    //         'selected_categories' => $selectedCategories,
-    //         'selected_events' => $selectedCategories,
-    //         'registration_data' => [
-    //             'form_data' => session('form_data'),
-    //             'selected_categories' => $selectedCategories
-    //         ]
-    //     ]);
-
-    //     return redirect()->route('register.accommodation');
-    // }
-
     public function storeStep2(Request $request)
     {
-        $selectedCategoriesJson = $request->input('selected_categories');
-        
-        if (empty($selectedCategoriesJson)) {
-            return redirect()->back()->with('error', 'Please select at least one event.');
-        }
+        // Validasi input
+        $request->validate([
+            'selected_categories' => 'required',
+        ]);
 
-        // Decode JSON string menjadi array
-        $selectedCategories = json_decode($selectedCategoriesJson[0], true);
+        // Pisahkan kategori yang dipilih menjadi array
+        $selectedCategories = explode(',', $request->input('selected_categories')[0]); 
+        $selectedCategories = array_map('intval', $selectedCategories);
 
-        if (!$selectedCategories) {
-            return redirect()->back()->with('error', 'Invalid event data format.');
-        }
-
-        // Simpan data ke session
+        // Simpan ke session dengan multiple key untuk konsistensi
         session([
-            'selected_categories' => array_column($selectedCategories, 'id'),
-            'categories_details' => $selectedCategories,
-            'registration_data' => array_merge(
-                session('registration_data', []),
-                ['selected_categories' => $selectedCategories]
-            )
+            'selected_categories' => $selectedCategories,
+            'selected_events' => $selectedCategories,
+            'registration_data' => [
+                'form_data' => session('form_data'),
+                'selected_categories' => $selectedCategories
+            ]
         ]);
 
         return redirect()->route('register.accommodation');
@@ -448,27 +439,27 @@ class RegisterController extends Controller
         
 
         // Hanya kurangi kuota jika belum pernah dikurangi
-        if (!$quotaReduced) {
-            foreach ($selectedCategories as $eventId) {
-                $event = Event::find($eventId);
+         if (!$quotaReduced) {
+        foreach ($selectedCategories as $eventId) {
+            $event = Event::find($eventId);
 
-                if ($event) {
-                    // Jika kuota bernilai 0, hentikan proses dengan pesan error
-                    if ($event->kuota === 0) {
-                        return redirect()->route('register.step1')->with('error', 'The quota for ' . $event->name . ' is full.');
-                    }
-
-                    // Jika kuota lebih besar dari 0, kurangi kuota
-                    if ($event->kuota !== null && $event->kuota > 0) {
-                        $event->kuota -= 1;
-                        $event->save();
-                    }
-
-                    // Jika kuota null, lanjutkan proses tanpa pengurangan
-                } else {
-                    return redirect()->route('register.step1')->with('error', 'Event dengan ID ' . $eventId . ' tidak ditemukan.');
+            if ($event) {
+                // Jika kuota bernilai 0, hentikan proses dengan pesan error
+                if ($event->kuota === 0) {
+                    return redirect()->route('register.step1')->with('error', 'The quota for ' . $event->name . ' is full.');
                 }
+
+                // Jika kuota lebih besar dari 0, kurangi kuota
+                if ($event->kuota !== null && $event->kuota > 0) {
+                    $event->kuota -= 1;
+                    $event->save();
+                }
+
+                // Jika kuota null, lanjutkan proses tanpa pengurangan
+            } else {
+                return redirect()->route('register.step1')->with('error', 'Event dengan ID ' . $eventId . ' tidak ditemukan.');
             }
+        }
 
         // Tandai kuota sebagai sudah dikurangi di session
         $request->session()->put('quota_reduced', true);
@@ -483,8 +474,9 @@ class RegisterController extends Controller
     // Step 3: Menyelesaikan Pendaftaran
     public function submitRegistration(Request $request)
     {
-        DB::beginTransaction();
         try {
+            DB::beginTransaction();
+
             // Validasi inputan dari pengguna
             $request->validate([
                 'full_name' => 'required|string|max:255',
@@ -496,32 +488,6 @@ class RegisterController extends Controller
                 'phone' => 'required|string|max:20',
                 'address' => 'required|string|max:255',
             ]);
-
-            // Cek voucher sebelum melanjutkan proses
-            if (session()->has('voucher_code')) {
-                $voucher = Voucher::where('code', session('voucher_code'))
-                    ->where('is_active', true)
-                    ->where(function($query) {
-                        $query->where('valid_until', '>', now())
-                            ->orWhereNull('valid_until');
-                    })
-                    ->lockForUpdate() // Lock untuk mencegah race condition
-                    ->first();
-
-                if (!$voucher) {
-                    DB::rollBack();
-                    return redirect()->back()->with('error', 'Voucher tidak valid atau sudah kadaluarsa');
-                }
-
-                // Cek max_uses
-                if ($voucher->max_uses && $voucher->times_used >= $voucher->max_uses) {
-                    DB::rollBack();
-                    return redirect()->back()->with('error', 'Voucher sudah mencapai batas penggunaan maksimal');
-                }
-
-                // Increment times_used
-                $voucher->increment('times_used');
-            }
 
             // Ambil kategori yang dipilih dari session
             $selectedCategories = $request->session()->get('selected_categories', []);
@@ -545,52 +511,9 @@ class RegisterController extends Controller
             $registrasi->source = 'web';
             $registrasi->save();
 
-            // Simpan event yang dipilih dengan voucher
-            $categoriesDetails = session('categories_details');
-            
-            foreach ($categoriesDetails as $category) {
-                $originalPrice = $category['originalPrice'];
-                $finalPrice = $originalPrice;
-                $discountPercentage = 0;
-                $discountCode = null;
-
-                if (session()->has('voucher_code')) {
-                    $voucher = Voucher::where('code', session('voucher_code'))
-                        ->where('is_active', true)
-                        ->first();
-                        
-                        if ($voucher) {
-                            $eventDiscounts = json_decode($voucher->event_discounts, true);
-                            $discountTypes = json_decode($voucher->discount_types, true);
-                            
-                            if (isset($eventDiscounts[$category['eventTypeId']])) {
-                                $discountValue = $eventDiscounts[$category['eventTypeId']];
-                                $discountType = $discountTypes[$category['eventTypeId']] ?? 'percentage';
-                                
-                                if ($discountType === 'percentage') {
-                                    $discountPercentage = $discountValue;
-                                    $finalPrice = $originalPrice - ($originalPrice * $discountValue / 100);
-                                } else {
-                                    // Untuk diskon nominal tetap
-                                    $finalPrice = $originalPrice - $discountValue;
-                                    $discountPercentage = round(($discountValue / $originalPrice) * 100, 2);
-                                }
-                                $discountCode = $voucher->code;
-                            }
-                        }
-                }
-
-                // Pastikan final_price tidak negatif
-                $finalPrice = max(0, $finalPrice);
-
-                $registrasi->events()->attach($category['id'], [
-                    'original_price' => $originalPrice,
-                    'final_price' => $finalPrice,
-                    'discount_percentage' => $discountPercentage,
-                    'discount_code' => $discountCode,
-                    'discount_type' => $discountCode ? 'voucher' : null
-                ]);
-            }
+            // Simpan hubungan many-to-many antara registrasi dan events
+            $selectedCategories = session('selected_categories', []);
+            $registrasi->events()->sync($selectedCategories);
 
             // Simpan accommodation jika ada
             if (session()->has('accommodation_booking')) {
@@ -655,11 +578,19 @@ class RegisterController extends Controller
                 }
             }
 
-            // Hitung total dari session yang sudah include diskon
-            $eventsTotal = array_sum(array_column($categoriesDetails, 'price'));
-            
-            // Hitung total accommodation
-            $accommodationTotal = 0;
+            // Hitung total amount
+            $amount = 0;
+            foreach ($selectedCategories as $categoryId) {
+                $event = Event::find($categoryId);
+                if ($event) {
+                    $price = now()->timezone('Asia/Jakarta') <= \Carbon\Carbon::parse($event->early_bid_date)->endOfDay()->timezone('Asia/Jakarta')
+                        ? $event->early_bid_price
+                        : $event->onsite_price;
+                    $amount += $price;
+                }
+            }
+
+            // Tambahkan accommodation amount jika ada
             if (session()->has('accommodation_booking')) {
                 $accommodationData = session('accommodation_booking');
                 $checkIn = \Carbon\Carbon::parse($accommodationData['check_in_date']);
@@ -667,15 +598,12 @@ class RegisterController extends Controller
                 $nights = $checkIn->diffInDays($checkOut);
 
                 foreach ($accommodationData['rooms'] as $room) {
-                    $accommodationTotal += $room['price'] * $room['quantity'] * $nights;
+                    $amount += $room['price'] * $room['quantity'] * $nights;
                 }
             }
 
-            // Total amount dengan harga yang sudah didiskon
-            $amount = $eventsTotal + $accommodationTotal;
-
             // Set payment expiry dengan benar
-            $currentTime = now();
+            $currentTime = now('Asia/Jakarta');
             $expiryTime = $currentTime->copy()->addDay(); // Menggunakan addDay()
 
             // Debug timestamps
@@ -700,12 +628,17 @@ class RegisterController extends Controller
 
             DB::commit();
 
-            return redirect()->route('register.step4', ['registrasi' => $registrasi->id]);
+            return redirect()->route('register.step4');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Registration error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat memproses pendaftaran');
+            \Log::error('Registration Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('register.step1')
+                ->with('error', 'Registration failed: ' . $e->getMessage());
         }
     }
 
@@ -735,7 +668,29 @@ class RegisterController extends Controller
 
             $events = $registrasi->events;
             
-            // Tidak perlu menghitung ulang amount karena sudah benar saat create payment
+            // Hitung total events
+            $eventsTotal = 0;
+            foreach ($events as $event) {
+                $price = now()->timezone('Asia/Jakarta') <= \Carbon\Carbon::parse($event->early_bid_date)->endOfDay()->timezone('Asia/Jakarta')
+                    ? $event->early_bid_price
+                    : $event->onsite_price;
+                $eventsTotal += $price;
+            }
+
+            // Tambahkan total accommodation dari pivot table
+            $accommodationTotal = 0;
+            foreach ($registrasi->accommodations as $accommodation) {
+                $checkIn = \Carbon\Carbon::parse($accommodation->pivot->check_in_date);
+                $checkOut = \Carbon\Carbon::parse($accommodation->pivot->check_out_date);
+                $nights = $checkIn->diffInDays($checkOut);
+                
+                $accommodationTotal += $accommodation->price * $accommodation->pivot->quantity * $nights;
+            }
+
+            // Update payment amount
+            $payment->amount = $eventsTotal + $accommodationTotal;
+            $payment->save();
+
             return view('register.step4', compact('payment', 'registrasi', 'events'));
 
         } catch (\Exception $e) {
@@ -1025,63 +980,70 @@ class RegisterController extends Controller
 
     public function showPayLaterForm(Request $request)
     {
-        try {
-            $request->validate([
-                'invoice_number' => 'required|string|exists:payments,invoice_number',
-            ]);
+        // Validasi input invoice_number
+        $request->validate([
+            'invoice_number' => 'required|string|exists:payments,invoice_number',
+        ], [
+            'invoice_number.exists' => 'Invoice not found or invalid.',
+        ]);
+    
 
-            $invoice = $request->input('invoice_number');
-            session(['invoice_number' => $invoice]);
+        $invoice = $request->input('invoice_number');
+        session(['invoice_number' => $invoice]);
 
-            // Ambil payment dengan relasi yang dibutuhkan
-            $payment = Payment::with(['registrasi', 'registrasi.events', 'registrasi.accommodations'])
-                ->where('invoice_number', $invoice)
-                ->first();
+    
+        // Cari payment berdasarkan nomor invoice
+        $payment = Payment::where('invoice_number', $invoice)->first();
+    
+        if ($payment) {
+            // Ambil detail registrasi terkait dengan payment
+            $registrasi = $payment->registrasi;
+    
+            // Ambil detail event type dan kategori
+            $eventDetails = $registrasi->eventType;
+            $categoryDetails = $registrasi->category;
+    
+            // Mengecek apakah bukti pembayaran sudah diupload
+            $proofUploaded = $payment->proof_of_transfer ? true : false;
+    
+            // Ambil semua event yang dipilih dari tabel pivot registrasi_events
+            $selectedEvents = $registrasi->events;
+    
+            // Menentukan harga total dan harga per event berdasarkan early bird atau onsite price
+            $amount = 0;
+            $today = now();
+            $eventPrices = [];
+    
+            foreach ($selectedEvents as $event) {
+                $isEarlyBid = $today <= \Carbon\Carbon::parse($event->early_bid_date);
+                $price = $isEarlyBid ? $event->early_bid_price : $event->onsite_price;
+                $amount += $price;
 
-            if ($payment) {
-                $registrasi = $payment->registrasi;
-                $eventDetails = $registrasi->eventType;
-                $categoryDetails = $registrasi->category;
-                $selectedEvents = $registrasi->events;
-                $proofUploaded = $payment->proof_of_transfer ? true : false;
+    
+                // // Simpan harga per event ke dalam array
+                // $eventPrices[] = [
+                //     'event_name' => $event->name,
+                //     'price' => $price,
+                //     'is_early_bid' => $isEarlyBid,
+                // ];
 
-                // Gunakan amount dari database
-                $amount = $payment->amount;
-
-                return view('register.pay-later-details', [
-                    'registrasi' => $registrasi,
-                    'eventDetails' => $eventDetails,
-                    'categoryDetails' => $categoryDetails,
-                    'selectedEvents' => $selectedEvents,
-                    'payment' => $payment,
-                    'proofUploaded' => $proofUploaded,
-                    'amount' => $amount
-                ]);
             }
-
-            return redirect()->route('register.pay-laterInvoice')
-                ->withErrors(['invoice_number' => 'Invoice tidak ditemukan atau tidak valid.']);
-        } catch (\Exception $e) {
-            \Log::error('Pay Later Error:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+    
+            // Tampilkan detail pembayaran di view
+            return view('register.pay-later-details', [
+                'registrasi' => $registrasi,
+                'eventDetails' => $eventDetails,
+                'categoryDetails' => $categoryDetails,
+                'selectedEvents' => $selectedEvents, // Detail event yang dipilih
+                'payment' => $payment,
+                'proofUploaded' => $proofUploaded,
+                'amount' => $amount, // Menampilkan jumlah total pembayaran
+                'eventPrices' => $eventPrices,
             ]);
-
-            return redirect()->route('register.pay-laterInvoice')
-                ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
         }
+    
+        // Jika invoice tidak ditemukan, kembali ke form dengan pesan error
+        return redirect()->route('register.pay-laterInvoice')->withErrors(['invoice_number' => 'Invoice tidak ditemukan atau tidak valid.']);
     }
     
-    // private function calculateDiscountedTotal($selectedEvents)
-    // {
-    //     $total = 0;
-    //     foreach ($selectedEvents as $event) {
-    //         $price = $event->price;
-    //         if ($event->discount_percentage > 0) {
-    //             $price = $price - ($price * $event->discount_percentage / 100);
-    //         }
-    //         $total += $price;
-    //     }
-    //     return $total;
-    // }
 }

@@ -107,8 +107,40 @@ class ParticipantController extends Controller
         return DataTables::of($participants)
             ->addColumn('event_type', function ($participant) {
                 return $participant->events->map(function ($event) {
-                    return '• ' . $event->eventType->name . ' - ' . $event->name;
+                    return $event->eventType->name . ' - ' . $event->name;
                 })->implode('<br>');
+            })
+            ->addColumn('discount_info', function ($participant) {
+                \Log::info('Discount Info for participant ' . $participant->id, [
+                    'events' => $participant->events->map(function ($event) {
+                        return [
+                            'event_id' => $event->id,
+                            'discount_percentage' => $event->pivot->discount_percentage,
+                            'discount_code' => $event->pivot->discount_code
+                        ];
+                    })
+                ]);
+                $discounts = $participant->events->map(function ($event) {
+                    $pivot = $event->pivot;
+                    if ($pivot->discount_percentage > 0) {
+                        $discountInfo = '<div class="discount-info">' .
+                            '<div class="discount-percentage">' . number_format($pivot->discount_percentage, 2) . '%</div>';
+                        
+                        // Tambahkan pengecekan null untuk discount_code
+                        if (!empty($pivot->discount_code)) {
+                            $discountInfo .= '<div class="discount-detail">Kode: ' . $pivot->discount_code . '</div>';
+                        }
+                        
+                        $discountInfo .= '</div>';
+                        return $discountInfo;
+                    }
+                    return null;
+                })->filter()->values();
+                
+                return $discounts->isEmpty() ? '-' : $discounts->implode('<br>');
+            })
+            ->addColumn('source', function ($participant) {
+                return $participant->source ?? '-';
             })
             ->addColumn('invoice_number', function ($participant) {
                 return optional($participant->payments->first())->invoice_number ?? 'Belum Ada Invoice';
@@ -145,7 +177,7 @@ class ParticipantController extends Controller
                     </div>
                 ';
             })
-            ->rawColumns(['event_type','accommodation','actions'])
+            ->rawColumns(['event_type', 'accommodation', 'actions', 'discount_info'])
             ->make(true); 
     }
     
@@ -193,6 +225,14 @@ class ParticipantController extends Controller
                     'Jenis Event' => $participant->events->map(function ($event) {
                         return $event->eventType->name . ' - ' . $event->name;
                     })->implode(', '),
+                    'Diskon' => $participant->events->map(function ($event) {
+                        $pivot = $event->pivot;
+                        if ($pivot->discount_percentage > 0) {
+                            return number_format($pivot->discount_percentage, 2) . '%' .
+                                   ($pivot->discount_code ? ' Kode: ' . $pivot->discount_code : '');
+                        }
+                        return null;
+                    })->filter()->implode("\n"),
                     'Akomodasi' => $participant->accommodations->map(function ($accommodation) {
                         return $accommodation->name . ' - ' . 
                             'Quantity: ' . $accommodation->pivot->quantity . ', ' .
@@ -203,9 +243,6 @@ class ParticipantController extends Controller
                     'Batas Pembayaran' => optional($participant->payments->first())->payment_expiry 
                         ? \Carbon\Carbon::parse(optional($participant->payments->first())->payment_expiry)->format('d-m-Y H:i:s')
                         : '-',
-                    // 'Batas Pembayaran' => optional($participant->payment->first())->payment_expiry   
-                    //     ? \Carbon\Carbon::parse(optional($participant->payments->first())->payment_expiry)->format('d-m-Y')
-                    //     : '-',
                     'Jumlah Pembayaran' => optional($participant->payments->first())->amount
                         ? number_format(optional($participant->payments->first())->amount, 2, ',', '.')
                         : '-',
@@ -226,8 +263,28 @@ class ParticipantController extends Controller
         return DataTables::of($participants)
             ->addColumn('event_type', function ($participant) {
                 return $participant->events->map(function ($event) {
-                    return '• ' . $event->eventType->name . ' - ' . $event->name;
+                    return $event->eventType->name . ' - ' . $event->name;
                 })->implode('<br>');
+            })
+            ->addColumn('discount_info', function ($participant) {
+                $discounts = $participant->events->map(function ($event) {
+                    $pivot = $event->pivot;
+                    if ($pivot->discount_percentage > 0) {
+                        $discountInfo = '<div class="discount-info">' .
+                            '<div class="discount-percentage">' . number_format($pivot->discount_percentage, 2) . '%</div>';
+                        
+                        // Tambahkan pengecekan null untuk discount_code
+                        if (!empty($pivot->discount_code)) {
+                            $discountInfo .= '<div class="discount-detail">Kode: ' . $pivot->discount_code . '</div>';
+                        }
+                        
+                        $discountInfo .= '</div>';
+                        return $discountInfo;
+                    }
+                    return null;
+                })->filter()->values();
+                
+                return $discounts->isEmpty() ? '-' : $discounts->implode('<br>');
             })
             ->addColumn('accommodation', function ($participant) {
                 // Menampilkan data akomodasi
@@ -275,7 +332,7 @@ class ParticipantController extends Controller
                 }
                 return '<button type="button" class="btn btn-secondary" disabled>Belum Ada Bukti</button>';
             })
-            ->rawColumns(['event_type','accommodation','action'])
+            ->rawColumns(['event_type', 'accommodation', 'action', 'discount_info'])
             ->make(true);
     }
 

@@ -41,6 +41,7 @@
                             <th>Kategori</th>
                             <th>Telepon</th>
                             <th>Jenis Event</th>
+                            <th>Diskon</th>
                             <th>Akomodasi</th>
                             <th>Nomor Invoice</th>
                             <th>Batas Pembayaran</th>
@@ -232,7 +233,19 @@
             { data: 'email', name: 'email' },
             { data: 'category', name: 'category' },
             { data: 'phone', name: 'phone' },
-            { data: 'event_type', name: 'event_type', render: function(data) { return data ? data : '-'; } },
+            { data: 'event_type', name: 'event_type' },
+            { 
+                data: 'discount_info', 
+                name: 'discount_info',
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    if (type === 'display') {
+                        return data;
+                    }
+                    return data.replace(/<[^>]*>/g, '');
+                }
+            },
             { data: 'accommodation', name: 'accommodation'},
             { data: 'invoice_number', name: 'invoice_number' },
             { data: 'payment_expiry', name: 'payment_expiry'},

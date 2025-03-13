@@ -8,6 +8,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Payment;
+use App\Models\Event;
+use App\Models\RegistrasiEvent;
 use Mpdf\Mpdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -143,22 +145,29 @@ class GenerateInvoice implements ShouldQueue
 
                         // Event details
                         $counter = 1;
+                        $eventsTotal = 0;
+
                         foreach ($payment->registrasi->events as $event) {
-                            $today = now()->format('Y-m-d');
-
-                            if ($today <= $event->early_bid_date) {
-                                $price = $event->early_bid_price;
-                            } else {
-                                $price = $event->onsite_price;
-                            }
-
+                            $pivot = $event->pivot;
+                            $eventsTotal += $pivot->final_price;
+                            
                             $html .= '
                             <tr>
                                 <td>' . $counter++ . '</td>
                                 <td>' . $event->eventType->name . ' - ' . $event->name . '</td>
                                 <td>1</td>
-                                <td>Rp ' . number_format($price, 0, ',', '.') . '</td>
-                                <td>Rp ' . number_format($price, 0, ',', '.') . '</td>
+                                <td>';
+                            
+                            if ($pivot->discount_percentage > 0) {
+                                // $html .= '<del>Rp ' . number_format($pivot->original_price, 0, ',', '.') . '</del><br>';
+                                // $html .= 'Discount: ' . number_format($pivot->discount_percentage, 2) . '%<br>';
+                                $html .= 'Rp ' . number_format($pivot->final_price, 0, ',', '.');
+                            } else {
+                                $html .= 'Rp ' . number_format($pivot->final_price, 0, ',', '.');
+                            }
+                            
+                            $html .= '</td>
+                                <td>Rp ' . number_format($pivot->final_price, 0, ',', '.') . '</td>
                             </tr>';
                         }
 

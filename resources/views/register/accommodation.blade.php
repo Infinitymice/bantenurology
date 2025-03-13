@@ -27,6 +27,7 @@
                     <h3 class="text-center mb-4">Choose Accommodation (Optional)</h3>
                     <form method="POST" action="{{ route('register.accommodation') }}" id="accommodationForm">
                         @csrf
+                        <input type="hidden" name="selected_categories" value="{{ implode(',', session('selected_categories', [])) }}">
                         <input type="hidden" name="rooms" value="[]">
 
                         <!-- Date Range Selection -->

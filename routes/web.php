@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\GroupCodeController;
 use App\Http\Controllers\Admin\DownloadInvoiceController;
 use App\Http\Middleware\Auth;
 use App\Http\Middleware\Admin;
+use App\Http\Controllers\Admin\VoucherController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -58,7 +59,7 @@ Route::get('/register/step4', [RegisterController::class, 'showStep4'])->name('r
 
 // Route dropdown
 
-Route::get('/events-by-type/{eventTypeId}', [EventController::class, 'getEventsByType']);
+Route::get('/events-by-type/{type}', [EventController::class, 'getEventsByType'])->name('events.by.type');
 
 Route::get('/event-detail/{eventId}', function ($eventId) {
     $event = \App\Models\Event::find($eventId);
@@ -199,15 +200,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('accommodation/{accommodation}', [AccommodationController::class, 'destroy'])->name('accommodation.destroy');
     Route::get('accommodation/data', [AccommodationController::class, 'getData'])->name('accommodation.data');
 
-    //Route untuk code group    
-    Route::get('group-codes', [GroupCodeController::class, 'index'])->name('group-codes.index');
-    Route::post('group-codes', [GroupCodeController::class, 'store'])->name('group-codes.store'); // Changed from GET to POST
-    Route::post('group-codes/generate', [GroupCodeController::class, 'generate'])->name('group-codes.generate');
-    Route::get('group-codes/data', [GroupCodeController::class, 'getData'])->name('group-codes.data');
-    Route::get('group-codes/{id}/edit', [GroupCodeController::class, 'edit'])->name('group-codes.edit');
-    Route::put('group-codes/{id}', [GroupCodeController::class, 'update'])->name('group-codes.update');
-    Route::post('group-codes/{id}/toggle', [GroupCodeController::class, 'toggleStatus'])->name('group-codes.toggle');
-    Route::delete('group-codes/{id}', [GroupCodeController::class, 'destroy'])->name('group-codes.destroy');
+    // //Route untuk code group    
+    // Route::get('group-codes', [GroupCodeController::class, 'index'])->name('group-codes.index');
+    // Route::post('group-codes', [GroupCodeController::class, 'store'])->name('group-codes.store'); // Changed from GET to POST
+    // Route::post('group-codes/generate', [GroupCodeController::class, 'generate'])->name('group-codes.generate');
+    // Route::get('group-codes/data', [GroupCodeController::class, 'getData'])->name('group-codes.data');
+    // Route::get('group-codes/{id}/edit', [GroupCodeController::class, 'edit'])->name('group-codes.edit');
+    // Route::put('group-codes/{id}', [GroupCodeController::class, 'update'])->name('group-codes.update');
+    // Route::post('group-codes/{id}/toggle', [GroupCodeController::class, 'toggleStatus'])->name('group-codes.toggle');
+    // Route::delete('group-codes/{id}', [GroupCodeController::class, 'destroy'])->name('group-codes.destroy');
+
+    // Add these new routes
+    Route::get('vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('vouchers/data', [VoucherController::class, 'getData'])->name('vouchers.data');
+    Route::get('vouchers/{voucher}', [VoucherController::class, 'show'])->name('vouchers.show');
+    Route::post('vouchers', [VoucherController::class, 'store'])->name('vouchers.store');
+    Route::put('vouchers/{voucher}', [VoucherController::class, 'update'])->name('vouchers.update');
+    Route::delete('vouchers/{voucher}', [VoucherController::class, 'destroy'])->name('vouchers.destroy');
 });
 
 
@@ -250,3 +259,5 @@ Route::prefix('admin')->group(function () {
     Route::get('/settings', [SettingAbsensiController::class, 'index'])->name('admin.settings.index');
     Route::post('/settings', [SettingAbsensiController::class, 'update'])->name('admin.settings.update');
 });
+
+Route::post('/check-voucher-code', [RegisterController::class, 'checkVoucherCode'])->name('check.voucher.code');

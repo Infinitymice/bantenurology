@@ -41,6 +41,7 @@
                             <th>Telepon</th>
                             <th>Alamat</th>
                             <th>Jenis Event</th>
+                            <th>Diskon</th>
                             <th>Akomodasi</th>
                             <th>Nomor Invoice</th>
                             <th>Jumlah Pembayaran</th>
@@ -277,6 +278,18 @@
                 { data: 'phone', name: 'phone' },
                 { data: 'address', name: 'address' },
                 { data: 'event_type', name: 'event_type' },
+                { 
+                    data: 'discount_info', 
+                    name: 'discount_info',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type, row) {
+                        if (type === 'display') {
+                            return data || '-';
+                        }
+                        return data ? $(data).text() : '';
+                    }
+                },
                 { data: 'accommodation', name: 'accommodation'},
                 { data: 'invoice_number', name: 'invoice_number' },
                 { data: 'amount', name: 'amount' },
@@ -310,7 +323,13 @@
                         return `<span class="badge ${statusClass}">${data}</span>`;
                     }
                 },
-                { data: 'source', name: 'source' },
+                { 
+                    data: 'source', 
+                    name: 'source',
+                    render: function(data) {
+                        return data || '-';
+                    }
+                },
                 { data: 'actions', name: 'actions', orderable: false, searchable: false }
             ],
             language: {
@@ -385,7 +404,11 @@
                         });
                     }
                 },
-            ]
+            ],
+            "drawCallback": function(settings) {
+                // Re-initialize tooltips after DataTable redraw
+                $('[data-toggle="tooltip"]').tooltip();
+            }
         });
 
         // Event listener untuk perubahan filter
@@ -515,4 +538,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 </script>
+@endpush
+
+@push('styles')
+<style>
+    .discount-info {
+        padding: 5px 0;
+    }
+    .discount-percentage {
+        font-weight: bold;
+        color: #28a745;
+        margin-bottom: 3px;
+    }
+    .discount-detail {
+        color: #6c757d;
+        font-size: 0.875em;
+        margin-top: 2px;
+    }
+    hr {
+        margin: 8px 0;
+        opacity: 0.2;
+    }
+</style>
 @endpush

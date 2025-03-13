@@ -67,20 +67,25 @@
                         <div class="mb-3">
                             <h6 class="bold-label">Selected Events</h6>
                             <div class="row"> 
-                                @foreach ($categories as $category)
-                                    <div class="col-md-4 mb-3">
-                                        <div class="card">
-                                            <div class="card-body">
-                                                <h6><strong>{{ $category->eventType->name ?? 'N/A' }} - {{ $category->name }}</strong></h6>
-                                                <p>Price: Rp. {{ number_format($category->price) }}</p>
-                                                <p>Quantity: 1</p>
-                                            </div>
+                            @foreach (session('categories_details') as $category)
+                                <div class="col-md-4 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6><strong>{{ $category['eventTypeName'] }} - {{ $category['name'] }}</strong></h6>
+                                            @if($category['discountPercentage'] > 0)
+                                                <p>Original Price: <del>Rp. {{ number_format($category['originalPrice']) }}</del></p>
+                                                <p>Discount: {{ $category['discountPercentage'] }}%</p>
+                                                <p>Final Price: Rp. {{ number_format($category['price']) }}</p>
+                                            @else
+                                                <p>Price: Rp. {{ number_format($category['price']) }}</p>
+                                            @endif
                                         </div>
                                     </div>
-                                @endforeach
+                                </div>
+                            @endforeach
                             </div>
                             <div class="alert alert-info">
-                                <strong>Total Events: Rp. {{ number_format($categories->sum('price')) }}</strong>
+                                <strong>Total Events: Rp. {{ number_format(array_sum(array_column(session('categories_details'), 'price'))) }}</strong>
                             </div>
                         </div>
                         @if(session('accommodation_booking'))
@@ -122,7 +127,7 @@
                             </div>
                         @endif
                         @php
-                            $totalPrice = $categories->sum('price');
+                            $totalPrice = array_sum(array_column(session('categories_details'), 'price'));
                             if(session('accommodation_booking')) {
                                 $totalPrice += $totalAccommodationPrice ?? 0;
                             }

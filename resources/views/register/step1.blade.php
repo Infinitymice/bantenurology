@@ -55,43 +55,47 @@
                             <label for="address" class="bold-label">Address</label>
                             <input type="text" id="address" name="address" class="form-control" placeholder="Address" value="{{ old('address', $formData['address'] ?? '') }}" required>
                         </div>
+
                         <!-- Tambahkan setelah form yang ada -->
                         <div class="mb-3">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="isGroup" name="is_group">
-                                <label class="form-check-label" for="isGroup">Register as a Group</label>
+                                <input type="checkbox" class="form-check-input" id="inputVoucher" name="voucher" 
+                                    {{ old('voucher', session('voucher_code') ? 'checked' : '') }}>
+                                <label class="form-check-label" for="inputVoucher">Have Voucher?</label>
                             </div>
                         </div>
                         
-                        <div id="groupRegistrationInfo" style="display: none;">
-                            <div class="alert alert-info">
-                                <p><strong>Group Registration Information:</strong></p>
-                                <ul>
-                                    <li>You need at least 5 participants to get 1 free spot.</li>
-                                    <li>Each participant should register separately.</li>
-                                    <li>Enter the group code given by the admin.</li>
-                                </ul>
-                            </div>
-                            
+                        <div id="groupRegistrationInfo" style="display: {{ old('voucher', session('voucher_code')) ? 'block' : 'none' }}">
                             <div class="mb-3">
-                                <label for="groupCode" class="bold-label">Group Code</label>
-                                <input type="text" id="groupCode" name="group_code" class="form-control" placeholder="Input Your Group Code">
-                                <div class="invalid-feedback">
-                                    Invalid Code
-                                </div>
-                                <div class="valid-feedback">
-                                    Valid Code
-                                </div>
-                                <small id="groupCodeHelp" class="form-text text-muted"></small>
+                                <label for="voucher_code" class="bold-label">Code Voucher</label>
+                                <input type="text" id="voucher_code" name="voucher_code" class="form-control" 
+                                    value="{{ old('voucher_code', session('voucher_code')) }}" 
+                                    placeholder="Input Your Voucher Code">
                             </div>
                         </div>
 
                         <script>
-                            document.getElementById('isGroup').addEventListener('change', function() {
+                            document.getElementById('inputVoucher').addEventListener('change', function() {
                                 const groupInfo = document.getElementById('groupRegistrationInfo');
-                                groupInfo.style.display = this.checked ? 'block' : 'none';
+                                if (this.checked) {
+                                    groupInfo.style.display = 'block';
+                                } else {
+                                    groupInfo.style.display = 'none';
+                                    document.getElementById('voucher_code').value = '';
+                                }
                             });
-                        </script> 
+                            
+                            document.querySelector('form').addEventListener('submit', function(e) {
+                                const voucherChecked = document.getElementById('inputVoucher').checked;
+                                const voucherCode = document.getElementById('voucher_code').value;
+
+                                if (voucherChecked && !voucherCode) {
+                                    e.preventDefault();
+                                    alert('Please enter a voucher code or uncheck the voucher option');
+                                    return false;
+                                }
+                            });
+                        </script>
                         <script>
                             // Fungsi untuk menampilkan/menghilangkan input deskripsi berdasarkan kategori yang dipilih
                             function toggleSpecialistInput() {
@@ -221,24 +225,28 @@
 </script>
 <script>
             // Add group code validation
-            document.getElementById('groupCode').addEventListener('blur', function() {
+            document.getElementById('voucher_code').addEventListener('blur', function() {
                 const code = this.value;
-                const isGroupChecked = document.getElementById('isGroup').checked;
+                const inputVoucherChecked = document.getElementById('inputVoucher').checked;
                 
-                if (code && isGroupChecked) {
-                    fetch(`/check-group-code/${code}`, {
+                if (code && inputVoucherChecked) {
+                    fetch('/check-voucher-code', {
+                        method: 'POST',
                         headers: {
+                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        }
+                        },
+                        body: JSON.stringify({ code: code })
                     })
                     .then(response => response.json())
                     .then(data => {
-                        const input = document.getElementById('groupCode');
-                        const helpText = document.getElementById('groupCodeHelp');
+                        const input = document.getElementById('voucher_code');
+                        const helpText = document.getElementById('voucher_codeHelp');
                         
                         if (data.valid) {
                             input.classList.remove('is-invalid');
                             input.classList.add('is-valid');
+                            helpText.textContent = `Valid voucher: ${data.discount_percentage}% discount`;
                             helpText.classList.remove('text-danger');
                             helpText.classList.add('text-success');
                         } else {
@@ -247,16 +255,24 @@
                             helpText.textContent = data.message;
                             helpText.classList.remove('text-success');
                             helpText.classList.add('text-danger');
+                            // Clear the input if invalid
+                            this.value = '';
                         }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        const input = document.getElementById('groupCode');
-                        input.classList.remove('is-valid');
-                        input.classList.add('is-invalid');
-                        document.getElementById('groupCodeHelp').textContent = 'Terjadi kesalahan saat memvalidasi kode';
                     });
                 }
             });
+</script>
+<script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const voucherChecked = document.getElementById('inputVoucher').checked;
+        const voucherCode = document.getElementById('voucher_code').value;
+        const voucherValid = document.getElementById('voucher_code').classList.contains('is-valid');
+
+        if (voucherChecked && voucherCode && !voucherValid) {
+            e.preventDefault();
+            alert('Please enter a valid voucher code or uncheck the voucher option');
+            return false;
+        }
+    });
 </script>
 @endsection

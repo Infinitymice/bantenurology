@@ -29,9 +29,14 @@ class Event extends Model
         return $this->belongsToMany(Registrasi::class, 'registrasi_events', 'event_id', 'registrasi_id');
     }
 
+    public function pivot()
+    {
+        return $this->belongsToMany(Registrasi::class, 'registrasi_events')
+            ->withPivot(['original_price', 'final_price', 'discount_percentage', 'discount_code']);
+    }
+
     // public function registrasi()
     // {
     //     return $this->hasMany(Registrasi::class);
     // }
 }
-

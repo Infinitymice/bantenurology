@@ -27,9 +27,23 @@ class Registrasi extends Model
     }
 
     // Menambahkan hubungan many-to-many dengan model EventType
+    // public function events()
+    // {
+    //     return $this->belongsToMany(Event::class, 'registrasi_events', 'registrasi_id', 'event_id');
+    // }
+
     public function events()
     {
-        return $this->belongsToMany(Event::class, 'registrasi_events', 'registrasi_id', 'event_id');
+        return $this->belongsToMany(Event::class, 'registrasi_events', 'registrasi_id', 'event_id')
+            ->using(RegistrasiEvent::class)
+            ->withPivot([
+                'original_price',
+                'final_price',
+                'discount_type',
+                'discount_percentage',
+                'discount_code'
+            ])
+            ->withTimestamps();
     }
 
     // Event.php

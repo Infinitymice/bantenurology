@@ -116,6 +116,28 @@
     cursor: pointer;
 }
 
+
+/* css untuk diskon card */
+.price-container {
+    margin: 10px 0;
+}
+.text-muted del {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+.discounted-price {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #28a745;
+}
+.text-success {
+    color: #28a745 !important;
+}
+small.text-success {
+    font-size: 0.8rem;
+}
+
+
 /* css untuk particles js */
 #particles-js {
     position: fixed;

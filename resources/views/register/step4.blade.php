@@ -72,22 +72,24 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                    @php $eventsTotal = 0; @endphp
-                                    @foreach ($events as $index => $event)
-                                        @php
-                                            $price = now()->timezone('Asia/Jakarta') <= \Carbon\Carbon::parse($event->early_bid_date)->endOfDay()->timezone('Asia/Jakarta') 
-                                                ? $event->early_bid_price 
-                                                : $event->onsite_price;
-                                            $qty = 1;
-                                            $subtotal = $price * $qty;
-                                            $eventsTotal += $subtotal;
-                                        @endphp
+                                    @php 
+                                        $categoriesDetails = session('categories_details', []);
+                                        $eventsTotal = array_sum(array_column($categoriesDetails, 'price'));
+                                    @endphp
+                                    @foreach ($categoriesDetails as $index => $category)
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
-                                            <td>{{ $event->eventType->name ?? 'N/A' }} - {{ $event->name }}</td>
-                                            <td class="text-end">Rp {{ number_format($price, 0, ',', '.') }}</td>
-                                            <td class="text-center">{{ $qty }}</td>
-                                            <td class="text-end">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
+                                            <td>{{ $category['eventTypeName'] }} - {{ $category['name'] }}</td>
+                                            <td class="text-end">
+                                                @if(isset($category['discountPercentage']) && $category['discountPercentage'] > 0)
+                                                    <strike>Rp. {{ number_format($category['originalPrice']) }}</strike><br>
+                                                    <span class="text-success">Rp. {{ number_format($category['price']) }}</span>
+                                                @else
+                                                    Rp. {{ number_format($category['price']) }}
+                                                @endif
+                                            </td>
+                                            <td class="text-center">1</td>
+                                            <td class="text-end">Rp. {{ number_format($category['price']) }}</td>
                                         </tr>
                                     @endforeach
                                     </tbody>
